@@ -12,7 +12,8 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force",
     "import:xlsx": "tsx scripts/import-xlsx.ts",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts",
+    "user:create": "tsx scripts/create-user.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

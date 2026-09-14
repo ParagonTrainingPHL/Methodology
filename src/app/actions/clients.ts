@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 
 const clientSchema = z.object({
   firstName: z.string().min(1).max(80),
@@ -16,6 +17,7 @@ const clientSchema = z.object({
 });
 
 export async function createClient(formData: FormData) {
+  await requireUser();
   const parsed = clientSchema.parse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName") ?? "",
@@ -39,6 +41,7 @@ export async function createClient(formData: FormData) {
 }
 
 export async function updateClient(clientId: string, formData: FormData) {
+  await requireUser();
   const parsed = clientSchema.parse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName") ?? "",

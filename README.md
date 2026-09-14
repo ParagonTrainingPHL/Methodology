@@ -28,10 +28,15 @@ readings for review. It is a prompt to look, not a diagnosis.
 
 ```bash
 npm install
+cp .env.example .env        # then set SESSION_SECRET to a random string
 npx prisma migrate dev      # create the SQLite database
 npm run db:seed             # block taxonomy + assessment battery
+npm run user:create -- you@example.com "Your Name"
 npm run dev
 ```
+
+`user:create` prints a generated password unless you pass one as a third
+argument. Run it again with the same email to reset that password.
 
 ### Importing an existing tracker workbook
 
@@ -68,7 +73,9 @@ second set") that the number alone loses.
 | `npm run db:seed` | Seed blocks and assessment metrics |
 | `npm run db:studio` | Browse the database |
 | `npm run import:xlsx -- <file>` | Import a tracker workbook |
-| `node scripts/smoke.mjs <clientId>` | End-to-end check of the main flows |
+| `npm run user:create -- <email> <name>` | Create or reset a coach account |
+| `node scripts/smoke.mjs <clientId> <email> <password>` | End-to-end check of the main flows |
+| `node scripts/auth-check.mjs <clientId> <email> <password>` | Verify the app is closed when signed out |
 
 ## Stack
 
@@ -76,10 +83,21 @@ Next.js 16 (App Router), TypeScript, Tailwind 4, Prisma 6 with SQLite,
 Recharts. SQLite has no enums, so status-like fields are strings constrained by
 union types in `src/lib/constants.ts` — the schema moves to Postgres unchanged.
 
+## Access
+
+Every page is behind a sign-in. `src/proxy.ts` denies by default and routes opt
+out explicitly, because the app stores blood pressure readings and medical
+notes. Server actions check the session themselves as well, since they are
+separately reachable endpoints and the proxy only gates navigation.
+
+Sessions are signed, self-contained cookies (HMAC-SHA256, 30 days) so they can
+be verified in the edge runtime where Prisma is unavailable. Passwords are
+bcrypt hashed. `SESSION_SECRET` must be set to a random value — rotating it
+signs everyone out.
+
 ## Not yet built
 
-- Authentication. Every route is currently open; this must be added before the
-  app is deployed anywhere reachable, since it holds client health data.
 - A client-facing view. Clients cannot yet see their own programme or log their
-  own sessions.
+  own sessions. The `User`/`Client` link exists in the schema for this.
 - Saving a session's slot sequence as a reusable template from the UI.
+- Password reset by email; use `npm run user:create` to reset one directly.

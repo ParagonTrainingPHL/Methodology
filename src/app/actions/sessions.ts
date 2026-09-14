@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 import { parsePerformedSets, parseSetCount } from "@/lib/parse";
 
 const setSchema = z.object({
@@ -17,6 +18,7 @@ const logSetsSchema = z.object({
 });
 
 export async function logPerformedSets(input: unknown) {
+  await requireUser();
   const { sessionItemId, sets, notes } = logSetsSchema.parse(input);
 
   const item = await prisma.sessionItem.findUnique({
@@ -73,6 +75,7 @@ const vitalsSchema = z.object({
 });
 
 export async function updateSessionVitals(input: unknown) {
+  await requireUser();
   const { sessionId, ...data } = vitalsSchema.parse(input);
 
   const session = await prisma.session.update({
@@ -93,6 +96,7 @@ const createSessionSchema = z.object({
 });
 
 export async function createSession(input: unknown) {
+  await requireUser();
   const { clientId, date, dayType, templateId } =
     createSessionSchema.parse(input);
 
@@ -145,6 +149,7 @@ const copySchema = z.object({
  * the exercises carry over or the slots are left open for fresh selection.
  */
 export async function copySession(input: unknown) {
+  await requireUser();
   const { sourceSessionId, clientId, date, keepExercises } =
     copySchema.parse(input);
 
@@ -196,6 +201,7 @@ const addItemSchema = z.object({
 });
 
 export async function addSessionItem(input: unknown) {
+  await requireUser();
   const data = addItemSchema.parse(input);
 
   const last = await prisma.sessionItem.findFirst({
@@ -215,6 +221,7 @@ export async function addSessionItem(input: unknown) {
 }
 
 export async function deleteSessionItem(sessionItemId: string) {
+  await requireUser();
   const item = await prisma.sessionItem.delete({
     where: { id: sessionItemId },
     select: { sessionId: true, session: { select: { clientId: true } } },
@@ -231,6 +238,7 @@ export async function logSetsFromShorthand(
   sessionItemId: string,
   shorthand: string,
 ) {
+  await requireUser();
   const item = await prisma.sessionItem.findUnique({
     where: { id: sessionItemId },
     select: { prescribedSets: true },

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/app/actions/auth";
 
 const LINKS = [
   { href: "/", label: "Clients" },
@@ -9,7 +10,7 @@ const LINKS = [
   { href: "/templates", label: "Templates" },
 ];
 
-export function SidebarNav() {
+export function SidebarNav({ userName }: { userName: string }) {
   const pathname = usePathname();
 
   return (
@@ -44,6 +45,20 @@ export function SidebarNav() {
           );
         })}
       </nav>
+
+      <div className="border-t border-ink-800 p-2.5">
+        <div className="px-3 py-1.5 text-xs text-ink-400 truncate">
+          {userName}
+        </div>
+        <form action={logout}>
+          <button
+            type="submit"
+            className="w-full text-left px-3 py-1.5 rounded-md text-xs text-ink-500 hover:bg-ink-850 hover:text-ink-200 transition-colors"
+          >
+            Sign out
+          </button>
+        </form>
+      </div>
     </aside>
   );
 }

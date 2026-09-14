@@ -2,14 +2,24 @@
 // Usage: node scripts/smoke.mjs <clientId>
 import { chromium } from "playwright";
 
-const clientId = process.argv[2];
-if (!clientId) throw new Error("usage: node scripts/smoke.mjs <clientId>");
+const [, , clientId, email = "paragontrainingphl@gmail.com", password] = process.argv;
+if (!clientId || !password) {
+  throw new Error("usage: node scripts/smoke.mjs <clientId> <email> <password>");
+}
 
 const base = "http://localhost:3000";
 const browser = await chromium.launch({
   executablePath: "/opt/pw-browsers/chromium",
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+
+await page.goto(`${base}/login`, { waitUntil: "networkidle" });
+await page.fill('input[name="email"]', email);
+await page.fill('input[name="password"]', password);
+await page.click('button[type="submit"]');
+await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
+  timeout: 20000,
+});
 
 const errors = [];
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));

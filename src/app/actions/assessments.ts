@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 import {
   parseBilateral,
   parseBloodPressure,
@@ -55,6 +56,7 @@ const saveSchema = z.object({
 });
 
 export async function saveAssessment(input: unknown) {
+  await requireUser();
   const { clientId, assessmentId, date, label, notes, values } =
     saveSchema.parse(input);
 
@@ -115,6 +117,7 @@ export async function saveAssessment(input: unknown) {
 }
 
 export async function deleteAssessment(assessmentId: string) {
+  await requireUser();
   const assessment = await prisma.assessment.delete({
     where: { id: assessmentId },
     select: { clientId: true },
