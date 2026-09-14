@@ -1,0 +1,283 @@
+// Methodology — workout programming built around block-slot prescription,
+// per-set autoregulation, and longitudinal re-evaluation.
+//
+// SQLite has no native enums; string fields are constrained by the union types
+// in src/lib/constants.ts so the schema stays portable to Postgres.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("COACH") // COACH | CLIENT
+  createdAt    DateTime @default(now())
+
+  client Client?
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  dateOfBirth DateTime?
+  status      String    @default("ACTIVE") // ACTIVE | PAUSED | ARCHIVED
+  goals       String?
+  // Contraindications, medications, injury history. Surfaced on every session
+  // view because this population trains with real clinical constraints.
+  medicalNotes String?
+  notes        String?
+  startedOn    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  sessions    Session[]
+  assessments Assessment[]
+
+  @@index([status])
+}
+
+/// A slot in the session sequence. The coach programs the slot; the exercise
+/// filling it is chosen at delivery time and rotates freely week to week.
+model Block {
+  id           String  @id @default(cuid())
+  key          String  @unique
+  name         String
+  category     String // PREP | STRENGTH | CORE | POWER | CONDITIONING | RECOVERY
+  defaultOrder Int
+  description  String?
+
+  aliases       BlockAlias[]
+  exercises     Exercise[]
+  sessionItems  SessionItem[]
+  templateItems TemplateItem[]
+
+  @@index([category, defaultOrder])
+}
+
+/// Raw block labels carried over from the spreadsheets, mapped to canonical blocks.
+model BlockAlias {
+  id      String @id @default(cuid())
+  raw     String @unique
+  blockId String
+  block   Block  @relation(fields: [blockId], references: [id], onDelete: Cascade)
+}
+
+model Exercise {
+  id             String  @id @default(cuid())
+  name           String
+  normalizedName String  @unique
+  equipment      String?
+  cues           String?
+  notes          String?
+  isBodyweight   Boolean @default(false)
+  /// True for entries like "cardio machine of choice" where the slot is
+  /// deliberately left to in-session selection.
+  isOpenChoice   Boolean @default(false)
+  usageCount     Int     @default(0)
+  createdAt      DateTime @default(now())
+
+  primaryBlockId String?
+  primaryBlock   Block?  @relation(fields: [primaryBlockId], references: [id], onDelete: SetNull)
+
+  sessionItems  SessionItem[]
+  templateItems TemplateItem[]
+
+  @@index([primaryBlockId])
+  @@index([usageCount])
+}
+
+/// A reusable session skeleton: an ordered list of block slots with prescription
+/// guidance. Instantiating one creates a Session whose exercises can be swapped.
+model SessionTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  dayType     String   @default("STRENGTH") // STRENGTH | MOVEMENT
+  description String?
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items    TemplateItem[]
+  sessions Session[]
+}
+
+model TemplateItem {
+  id         String @id @default(cuid())
+  templateId String
+  template   SessionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  order   Int
+  blockId String
+  block   Block  @relation(fields: [blockId], references: [id])
+
+  /// Optional default; left null when the slot is intentionally coach-choice.
+  exerciseId String?
+  exercise   Exercise? @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+
+  /// Superset / circuit marker, e.g. "1A", "1B", "2A".
+  groupLabel       String?
+  prescribedSets   String?
+  prescribedReps   String?
+  prescribedLoad   String?
+  tempo            String?
+  cues             String?
+  target           String?
+
+  @@index([templateId, order])
+}
+
+model Session {
+  id       String   @id @default(cuid())
+  clientId String
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  date    DateTime
+  dayType String   @default("STRENGTH") // STRENGTH | MOVEMENT
+  title   String?
+  status  String   @default("PLANNED") // PLANNED | COMPLETED | SKIPPED
+
+  templateId String?
+  template   SessionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  // Clinical monitoring recorded alongside training.
+  bpPreSystolic   Int?
+  bpPreDiastolic  Int?
+  bpPostSystolic  Int?
+  bpPostDiastolic Int?
+  hrResting       Int?
+  hrPeak          Int?
+  hrRecovery      String?
+  bodyweight      Float?
+  sessionRpe      Float?
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items SessionItem[]
+
+  @@index([clientId, date])
+  @@index([date])
+}
+
+model SessionItem {
+  id        String  @id @default(cuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  order   Int
+  blockId String
+  block   Block  @relation(fields: [blockId], references: [id])
+  /// Preserved verbatim from import so nothing is lost in normalization.
+  rawBlock String?
+
+  exerciseId String?
+  exercise   Exercise? @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  /// Free-text exercise as written, when it does not resolve to the library.
+  exerciseLabel String?
+
+  groupLabel     String?
+  prescribedSets String?
+  prescribedReps String?
+  prescribedLoad String?
+  tempo          String?
+  cues           String?
+  target         String?
+
+  /// Performed loads as originally written, e.g. "77,88,88".
+  performedRaw String?
+  notes        String?
+
+  sets PerformedSet[]
+
+  @@index([sessionId, order])
+  @@index([exerciseId])
+}
+
+/// One working set. Per-set load is the unit of autoregulation in this
+/// methodology — loads commonly ramp within a single slot.
+model PerformedSet {
+  id            String      @id @default(cuid())
+  sessionItemId String
+  sessionItem   SessionItem @relation(fields: [sessionItemId], references: [id], onDelete: Cascade)
+
+  setNumber Int
+  load      Float?
+  loadRaw   String?
+  loadUnit  String? @default("lb")
+  reps      Int?
+  repsRaw   String?
+  rpe       Float?
+  notes     String?
+
+  @@unique([sessionItemId, setNumber])
+}
+
+/// The re-evaluation battery. Metrics are rows so the battery can change
+/// without a migration, and history stays comparable.
+model AssessmentMetric {
+  id           String  @id @default(cuid())
+  key          String  @unique
+  name         String
+  category     String // GIRTH | VITAL | BODY | FITNESS
+  unit         String?
+  valueType    String  @default("NUMBER") // NUMBER | TEXT | DURATION | BILATERAL
+  defaultOrder Int
+  /// Whether a rising number is an improvement. Null when it depends on context.
+  higherIsBetter Boolean?
+  description  String?
+
+  values AssessmentValue[]
+
+  @@index([category, defaultOrder])
+}
+
+model Assessment {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  date      DateTime
+  label     String? // "Initial Eval", "Eval 2"
+  isInitial Boolean  @default(false)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  values AssessmentValue[]
+
+  @@index([clientId, date])
+}
+
+model AssessmentValue {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  metricId     String
+  metric       AssessmentMetric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  /// Verbatim entry. Historical values are messy ("R: 1 min  L: 15s") and the
+  /// original wording carries coaching context the parsed number loses.
+  rawValue String?
+  /// Best-effort parse for charting; null when the raw value has no clean number.
+  numericValue Float?
+  /// Left-side value when the metric is bilateral; numericValue holds the right.
+  secondaryValue Float?
+  notes          String?
+
+  @@unique([assessmentId, metricId])
+}
