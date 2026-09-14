@@ -40,7 +40,7 @@ function cellValue(cell: ExcelJS.Cell): unknown {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) return value;
   if (typeof value === "object") {
-    const obj = value as Record<string, unknown>;
+    const obj = value as unknown as Record<string, unknown>;
     if ("richText" in obj && Array.isArray(obj.richText)) {
       return obj.richText.map((r) => (r as { text: string }).text).join("");
     }
@@ -73,14 +73,18 @@ function isHeaderRow(row: Row): boolean {
 }
 
 /**
- * The two day templates are distinguished by their header wording: the movement
- * day leads with "Phase" and carries a "Coaching Cues" column.
+ * Which of the two column layouts the rows below a header use.
+ *
+ * "CUED" headers label column G "Coaching Cues" and column H a target;
+ * "LOGGED" headers label them "tempo" and a performed-weight column. The header
+ * names its own columns, so this is reliable — unlike the day type, which the
+ * header wording stopped tracking once the coach settled on one layout.
  */
-function dayTypeFromHeader(row: Row): "STRENGTH" | "MOVEMENT" {
+function layoutFromHeader(row: Row): "CUED" | "LOGGED" {
   const first = cleanCell(row[0])?.toLowerCase();
   const seventh = cleanCell(row[6])?.toLowerCase();
-  if (first === "phase" || seventh === "coaching cues") return "MOVEMENT";
-  return "STRENGTH";
+  if (first === "phase" || seventh === "coaching cues") return "CUED";
+  return "LOGGED";
 }
 
 function asDate(value: unknown): Date | null {
@@ -132,6 +136,10 @@ async function loadBlocks() {
     blockCache.set(normalizeName(block.name), block.id);
     blockCache.set(block.key.toLowerCase(), block.id);
   }
+  for (const block of blocks) {
+    if (block.category === "STRENGTH") strengthBlockIds.add(block.id);
+  }
+
   const fallback = blocks.find((b) => b.key === "UNSPECIFIED");
   if (!fallback) throw new Error("Run the seed before importing.");
   fallbackBlockId = fallback.id;
@@ -218,6 +226,33 @@ async function resolveExercise(
 // Workout sheets
 // ---------------------------------------------------------------------------
 
+/** Block ids belonging to the STRENGTH category, filled during loadBlocks. */
+const strengthBlockIds = new Set<string>();
+
+/**
+ * A strength day is built around loaded slots — squat, hinge, press, pull,
+ * carry. A movement day is mobility, core, and conditioning with little or no
+ * external load. Counting loaded slots separates the two reliably.
+ *
+ * Runs only after blocks have been backfilled, since most sessions record no
+ * block at all and would otherwise all look unloaded.
+ */
+async function classifyDayTypes(): Promise<void> {
+  const sessions = await prisma.session.findMany({
+    select: { id: true, items: { select: { blockId: true } } },
+  });
+
+  for (const session of sessions) {
+    const loaded = session.items.filter((i) =>
+      strengthBlockIds.has(i.blockId),
+    ).length;
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { dayType: loaded >= 3 ? "STRENGTH" : "MOVEMENT" },
+    });
+  }
+}
+
 type PendingItem = {
   order: number;
   blockId: string;
@@ -295,18 +330,19 @@ async function importWorkoutSheet(
   clientId: string,
 ): Promise<number> {
   const rows = readSheet(sheet, 9);
-  let dayType: "STRENGTH" | "MOVEMENT" = "STRENGTH";
 
-  // Bucket rows by date; a session is one calendar day of work.
+  // The layout applies to every row under a header until the next one.
+  let layout: "CUED" | "LOGGED" = "LOGGED";
+
   const buckets = new Map<
     string,
-    { date: Date; dayType: "STRENGTH" | "MOVEMENT"; rows: Row[] }
+    { date: Date; layout: "CUED" | "LOGGED"; rows: Row[] }
   >();
 
   for (const row of rows) {
     if (!row) continue;
     if (isHeaderRow(row)) {
-      dayType = dayTypeFromHeader(row);
+      layout = layoutFromHeader(row);
       continue;
     }
     const date = asDate(row[0]);
@@ -314,7 +350,7 @@ async function importWorkoutSheet(
     if (!cleanCell(row[2])) continue;
 
     const key = dateKey(date);
-    if (!buckets.has(key)) buckets.set(key, { date, dayType, rows: [] });
+    if (!buckets.has(key)) buckets.set(key, { date, layout, rows: [] });
     buckets.get(key)!.rows.push(row);
   }
 
@@ -326,6 +362,13 @@ async function importWorkoutSheet(
     let bpPost: { systolic: number; diastolic: number } | null = null;
     const sessionNotes: string[] = [];
 
+    // Blocks are resolved up front so an untyped session can be classified from
+    // its own content before its rows are interpreted.
+    const resolvedBlocks = await Promise.all(
+      bucket.rows.map((row) => resolveBlock(cleanCell(row[1]))),
+    );
+    const isCuedLayout = bucket.layout === "CUED";
+
     for (const [index, row] of bucket.rows.entries()) {
       const rawBlock = cleanCell(row[1]);
       const exerciseName = cleanCell(row[2]);
@@ -336,7 +379,7 @@ async function importWorkoutSheet(
       const performedOrTarget = row[7];
       const noteCell = cleanCell(row[8]);
 
-      const { blockId, groupLabel } = await resolveBlock(rawBlock);
+      const { blockId, groupLabel } = resolvedBlocks[index];
       const exerciseId = await resolveExercise(exerciseName, blockId, loadCell);
 
       // Blood pressure is written into the notes column mid-log.
@@ -349,12 +392,11 @@ async function importWorkoutSheet(
         }
       }
 
-      const isMovementDay = bucket.dayType === "MOVEMENT";
-      const target = isMovementDay ? cleanCell(performedOrTarget) : null;
+      const target = isCuedLayout ? cleanCell(performedOrTarget) : null;
 
       const setCount = parseSetCount(setsCell);
       const { sets: parsedSets, performedRaw } = buildPerformedSets(
-        isMovementDay ? null : performedOrTarget,
+        isCuedLayout ? null : performedOrTarget,
         loadCell,
         repsCell,
         setCount,
@@ -370,8 +412,8 @@ async function importWorkoutSheet(
         prescribedSets: setsCell,
         prescribedReps: repsCell,
         prescribedLoad: cleanCell(loadCell),
-        tempo: isMovementDay ? null : cueCell,
-        cues: isMovementDay ? cueCell : null,
+        tempo: isCuedLayout ? null : cueCell,
+        cues: isCuedLayout ? cueCell : null,
         target,
         performedRaw,
         notes: noteCell,
@@ -388,7 +430,7 @@ async function importWorkoutSheet(
       data: {
         clientId,
         date: bucket.date,
-        dayType: bucket.dayType,
+        // Overwritten by classifyDayTypes once blocks are backfilled.
         status: wasPerformed ? "COMPLETED" : "PLANNED",
         bpPreSystolic: bpPre?.systolic,
         bpPreDiastolic: bpPre?.diastolic,
@@ -752,6 +794,7 @@ async function main() {
   }
 
   const inferred = await inferMissingBlocks();
+  await classifyDayTypes();
 
   const exerciseCount = await prisma.exercise.count();
   console.log(

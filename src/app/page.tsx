@@ -1,69 +1,152 @@
-import Image from "next/image";
+import Link from "next/link";
+import { prisma } from "@/lib/db";
+import { PageHeader, Card, EmptyState, StatusPill } from "@/components/ui";
+import {
+  clientName,
+  initials,
+  formatRelative,
+  formatDate,
+  categorizeBloodPressure,
+  BP_CATEGORY_STYLES,
+} from "@/lib/format";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function ClientsPage() {
+  const clients = await prisma.client.findMany({
+    orderBy: [{ status: "asc" }, { firstName: "asc" }],
+    include: {
+      _count: { select: { sessions: true, assessments: true } },
+      sessions: {
+        orderBy: { date: "desc" },
+        take: 1,
+        select: {
+          date: true,
+          dayType: true,
+          bpPreSystolic: true,
+          bpPreDiastolic: true,
+        },
+      },
+      assessments: {
+        orderBy: { date: "desc" },
+        take: 1,
+        select: { date: true, label: true },
+      },
+    },
+  });
+
+  const totalSessions = clients.reduce((sum, c) => sum + c._count.sessions, 0);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="p-8 max-w-6xl">
+      <PageHeader
+        title="Clients"
+        subtitle={`${clients.length} clients · ${totalSessions} sessions logged`}
+        actions={
+          <Link
+            href="/clients/new"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-accent-soft transition-colors"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            New client
+          </Link>
+        }
+      />
+
+      <Card>
+        {clients.length === 0 ? (
+          <EmptyState
+            title="No clients yet"
+            description="Add a client to start programming, or import an existing tracker workbook."
+          />
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-ink-800 text-left">
+                <th className="px-4 py-2.5 font-medium text-ink-400 text-xs uppercase tracking-wide">
+                  Client
+                </th>
+                <th className="px-4 py-2.5 font-medium text-ink-400 text-xs uppercase tracking-wide">
+                  Last session
+                </th>
+                <th className="px-4 py-2.5 font-medium text-ink-400 text-xs uppercase tracking-wide">
+                  Sessions
+                </th>
+                <th className="px-4 py-2.5 font-medium text-ink-400 text-xs uppercase tracking-wide">
+                  Last eval
+                </th>
+                <th className="px-4 py-2.5 font-medium text-ink-400 text-xs uppercase tracking-wide">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((client) => {
+                const lastSession = client.sessions[0];
+                const lastAssessment = client.assessments[0];
+                const bp =
+                  lastSession?.bpPreSystolic && lastSession?.bpPreDiastolic
+                    ? categorizeBloodPressure(
+                        lastSession.bpPreSystolic,
+                        lastSession.bpPreDiastolic,
+                      )
+                    : null;
+
+                return (
+                  <tr
+                    key={client.id}
+                    className="border-b border-ink-850 last:border-0 hover:bg-ink-850/60 transition-colors"
+                  >
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/clients/${client.id}`}
+                        className="flex items-center gap-2.5 group"
+                      >
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink-700 text-[11px] font-semibold text-ink-200">
+                          {initials(client)}
+                        </span>
+                        <span className="font-medium text-ink-100 group-hover:text-accent transition-colors">
+                          {clientName(client)}
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-ink-300">
+                      {lastSession ? (
+                        <span className="flex items-center gap-2">
+                          <span>{formatRelative(lastSession.date)}</span>
+                          {bp && (
+                            <span
+                              className={`text-xs tabular ${BP_CATEGORY_STYLES[bp]}`}
+                              title="Pre-session blood pressure"
+                            >
+                              {lastSession.bpPreSystolic}/
+                              {lastSession.bpPreDiastolic}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-ink-500">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-ink-300 tabular">
+                      {client._count.sessions}
+                    </td>
+                    <td className="px-4 py-2.5 text-ink-300">
+                      {lastAssessment ? (
+                        formatDate(lastAssessment.date)
+                      ) : (
+                        <span className="text-ink-500">none</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <StatusPill status={client.status} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </Card>
     </div>
   );
 }
