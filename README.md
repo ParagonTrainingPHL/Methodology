@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Methodology
 
-## Getting Started
+A programming and tracking app built around one specific coaching approach:
+the coach programs an **ordered sequence of block slots**, chooses the exercise
+that fills each slot at delivery time, autoregulates load **set by set**, and
+measures progress through a **repeated evaluation battery** rather than load on
+the bar.
 
-First, run the development server:
+Most training apps invert this — they lock the exercise and treat weight lifted
+as the outcome. That fits a powerlifter. It does not fit a general or clinical
+population, where the point is function and health markers.
+
+## What the model encodes
+
+| Concept | Why it exists |
+| --- | --- |
+| `Block` | The slot — Lower, Upper Pull, Carry, Anti-Extension, Zone 2. Programmed ahead; the exercise inside it rotates freely. |
+| `SessionItem` | One slot in one session, holding the prescription and what the coach actually wrote. |
+| `PerformedSet` | Per-set load and reps. Loads commonly ramp within a slot (`77, 88, 88`) — that ramp *is* the autoregulation. |
+| `groupLabel` | Superset and circuit pairings (`1A`, `1B`), which the tracker recorded in the block column. |
+| `Assessment` / `AssessmentMetric` | The re-evaluation battery: girths, blood pressure, grip, plank, sit-and-reach, back extension, single-leg stand, strength tests, cardio recovery. Metrics are rows, so the battery can change without a migration. |
+| Session vitals | Pre/post blood pressure, bodyweight, session RPE. This population trains with real clinical constraints, so monitoring sits next to training rather than in a separate system. |
+
+Blood pressure is categorised against the 2017 ACC/AHA thresholds to flag
+readings for review. It is a prompt to look, not a diagnosis.
+
+## Getting started
 
 ```bash
+npm install
+npx prisma migrate dev      # create the SQLite database
+npm run db:seed             # block taxonomy + assessment battery
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Importing an existing tracker workbook
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run import:xlsx -- path/to/tracker.xlsx --reset
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The importer reads the spreadsheet format these programmes were kept in, where
+the same information is recorded inconsistently as habits changed over time:
 
-## Learn More
+- Performed loads live in a dedicated column early on, and in the prescription
+  column later once the coach stopped separating the two.
+- The block column is abandoned entirely once the sequence became habitual.
+  Missing slots are recovered from how the same exercise is labelled elsewhere,
+  then by name (`src/lib/classify.ts`).
+- Excel silently turned comma-separated load lists into single integers
+  (`110,125,125` → `110125125`). These are split back apart when the digits
+  divide cleanly into plausible loads.
+- Day type is inferred from a session's loaded slots, because the header
+  wording stopped tracking it. The header is read only for what it reliably
+  names — its own columns.
 
-To learn more about Next.js, take a look at the following resources:
+Every parsed value keeps the coach's original wording beside it. The shorthand
+carries context ("on blue foam", "assisted", "switched to DB step-up on the
+second set") that the number alone loses.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Commands
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm test` | Parser tests |
+| `npm run db:seed` | Seed blocks and assessment metrics |
+| `npm run db:studio` | Browse the database |
+| `npm run import:xlsx -- <file>` | Import a tracker workbook |
+| `node scripts/smoke.mjs <clientId>` | End-to-end check of the main flows |
 
-## Deploy on Vercel
+## Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Next.js 16 (App Router), TypeScript, Tailwind 4, Prisma 6 with SQLite,
+Recharts. SQLite has no enums, so status-like fields are strings constrained by
+union types in `src/lib/constants.ts` — the schema moves to Postgres unchanged.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Not yet built
+
+- Authentication. Every route is currently open; this must be added before the
+  app is deployed anywhere reachable, since it holds client health data.
+- A client-facing view. Clients cannot yet see their own programme or log their
+  own sessions.
+- Saving a session's slot sequence as a reusable template from the UI.

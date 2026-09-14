@@ -19,7 +19,7 @@ export function SessionItemRow({
     id: string;
     blockName: string;
     blockCategory: string;
-    exerciseName: string;
+    exerciseName: string | null;
     groupLabel: string | null;
     prescribedSets: string | null;
     prescribedReps: string | null;
@@ -68,7 +68,11 @@ export function SessionItemRow({
 
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium text-ink-100">
-            {item.exerciseName}
+            {item.exerciseName ?? (
+              <span className="text-ink-500 font-normal italic">
+                choose exercise
+              </span>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-ink-400">

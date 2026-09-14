@@ -132,6 +132,56 @@ export async function createSession(input: unknown) {
   return session.id;
 }
 
+const copySchema = z.object({
+  sourceSessionId: z.string().min(1),
+  clientId: z.string().min(1),
+  date: z.string().min(1),
+  keepExercises: z.boolean(),
+});
+
+/**
+ * Repeats a session's block sequence on a new date. The slot order is the part
+ * of the programme that persists week to week; `keepExercises` controls whether
+ * the exercises carry over or the slots are left open for fresh selection.
+ */
+export async function copySession(input: unknown) {
+  const { sourceSessionId, clientId, date, keepExercises } =
+    copySchema.parse(input);
+
+  const source = await prisma.session.findUnique({
+    where: { id: sourceSessionId },
+    include: { items: { orderBy: { order: "asc" } } },
+  });
+  if (!source) throw new Error("Session not found");
+
+  const session = await prisma.session.create({
+    data: {
+      clientId,
+      date: new Date(`${date}T00:00:00.000Z`),
+      dayType: source.dayType,
+      templateId: source.templateId,
+      items: {
+        create: source.items.map((item) => ({
+          order: item.order,
+          blockId: item.blockId,
+          exerciseId: keepExercises ? item.exerciseId : null,
+          exerciseLabel: keepExercises ? item.exerciseLabel : null,
+          groupLabel: item.groupLabel,
+          prescribedSets: item.prescribedSets,
+          prescribedReps: item.prescribedReps,
+          prescribedLoad: keepExercises ? item.prescribedLoad : null,
+          tempo: item.tempo,
+          cues: item.cues,
+          target: item.target,
+        })),
+      },
+    },
+  });
+
+  revalidatePath(`/clients/${clientId}`);
+  return session.id;
+}
+
 const addItemSchema = z.object({
   sessionId: z.string().min(1),
   blockId: z.string().min(1),

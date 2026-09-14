@@ -6,6 +6,7 @@ import { clientName, formatDate } from "@/lib/format";
 import { DAY_TYPE_LABELS, type DayType } from "@/lib/constants";
 import { SessionItemRow } from "@/components/session-item-row";
 import { SessionVitals } from "@/components/session-vitals";
+import { AddSlot } from "@/components/add-slot";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,19 @@ export default async function SessionPage({
     });
   }
 
+  const [blocks, exercises] = await Promise.all([
+    prisma.block.findMany({ orderBy: { defaultOrder: "asc" } }),
+    prisma.exercise.findMany({
+      orderBy: { usageCount: "desc" },
+      select: {
+        id: true,
+        name: true,
+        primaryBlockId: true,
+        usageCount: true,
+      },
+    }),
+  ]);
+
   const groups = groupByCategory(session.items);
 
   return (
@@ -114,7 +128,7 @@ export default async function SessionPage({
                     blockName: item.block.name,
                     blockCategory: item.block.category,
                     exerciseName:
-                      item.exercise?.name ?? item.exerciseLabel ?? "—",
+                      item.exercise?.name ?? item.exerciseLabel ?? null,
                     groupLabel: item.groupLabel,
                     prescribedSets: item.prescribedSets,
                     prescribedReps: item.prescribedReps,
@@ -137,6 +151,17 @@ export default async function SessionPage({
             </ul>
           </Card>
         ))}
+
+        <AddSlot
+          sessionId={session.id}
+          blocks={blocks.map((b) => ({
+            id: b.id,
+            key: b.key,
+            name: b.name,
+            category: b.category,
+          }))}
+          exercises={exercises}
+        />
       </div>
     </div>
   );
