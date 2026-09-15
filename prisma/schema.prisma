@@ -1,8 +1,9 @@
 // Methodology — workout programming built around block-slot prescription,
 // per-set autoregulation, and longitudinal re-evaluation.
 //
-// SQLite has no native enums; string fields are constrained by the union types
-// in src/lib/constants.ts so the schema stays portable to Postgres.
+// Status-like fields are strings rather than enums, constrained by the union
+// types in src/lib/constants.ts. Adding a block category or session status is
+// then a code change rather than a database migration.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

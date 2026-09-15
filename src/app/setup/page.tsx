@@ -1,28 +1,25 @@
 import { redirect } from "next/navigation";
-import { LoginForm } from "@/components/login-form";
 import { needsSetup } from "@/app/actions/setup";
+import { SetupForm } from "@/components/setup-form";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Sign in · Methodology" };
+export const metadata = { title: "Set up · Methodology" };
 
-export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  // A fresh deployment has nobody to sign in as yet.
-  if (await needsSetup()) redirect("/setup");
-
-  const { next } = await searchParams;
+export default async function SetupPage() {
+  if (!(await needsSetup())) redirect("/login");
 
   return (
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="w-full max-w-sm">
         <div className="mb-6">
           <h1 className="text-lg font-semibold tracking-tight text-ink-100">
-            Methodology
+            Welcome to Methodology
           </h1>
           <p className="text-sm text-ink-400 mt-1">
-            Sign in to continue.
+            Create your coach account. This page closes once you&rsquo;re done.
           </p>
         </div>
-        <LoginForm next={typeof next === "string" ? next : null} />
+        <SetupForm />
       </div>
     </div>
   );

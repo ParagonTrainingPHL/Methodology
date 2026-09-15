@@ -1,53 +1,59 @@
 -- CreateTable
 CREATE TABLE "User" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'COACH',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Client" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "firstName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
     "email" TEXT,
     "phone" TEXT,
-    "dateOfBirth" DATETIME,
+    "dateOfBirth" TIMESTAMP(3),
     "status" TEXT NOT NULL DEFAULT 'ACTIVE',
     "goals" TEXT,
     "medicalNotes" TEXT,
     "notes" TEXT,
-    "startedOn" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "startedOn" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" TEXT,
-    CONSTRAINT "Client_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+
+    CONSTRAINT "Client_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Block" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "key" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "category" TEXT NOT NULL,
     "defaultOrder" INTEGER NOT NULL,
-    "description" TEXT
+    "description" TEXT,
+
+    CONSTRAINT "Block_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "BlockAlias" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "raw" TEXT NOT NULL,
     "blockId" TEXT NOT NULL,
-    CONSTRAINT "BlockAlias_blockId_fkey" FOREIGN KEY ("blockId") REFERENCES "Block" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+
+    CONSTRAINT "BlockAlias_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Exercise" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "normalizedName" TEXT NOT NULL,
     "equipment" TEXT,
@@ -56,25 +62,28 @@ CREATE TABLE "Exercise" (
     "isBodyweight" BOOLEAN NOT NULL DEFAULT false,
     "isOpenChoice" BOOLEAN NOT NULL DEFAULT false,
     "usageCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "primaryBlockId" TEXT,
-    CONSTRAINT "Exercise_primaryBlockId_fkey" FOREIGN KEY ("primaryBlockId") REFERENCES "Block" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+
+    CONSTRAINT "Exercise_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "SessionTemplate" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "dayType" TEXT NOT NULL DEFAULT 'STRENGTH',
     "description" TEXT,
     "isArchived" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SessionTemplate_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "TemplateItem" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "templateId" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
     "blockId" TEXT NOT NULL,
@@ -86,16 +95,15 @@ CREATE TABLE "TemplateItem" (
     "tempo" TEXT,
     "cues" TEXT,
     "target" TEXT,
-    CONSTRAINT "TemplateItem_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "SessionTemplate" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "TemplateItem_blockId_fkey" FOREIGN KEY ("blockId") REFERENCES "Block" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "TemplateItem_exerciseId_fkey" FOREIGN KEY ("exerciseId") REFERENCES "Exercise" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+
+    CONSTRAINT "TemplateItem_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Session" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "clientId" TEXT NOT NULL,
-    "date" DATETIME NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
     "dayType" TEXT NOT NULL DEFAULT 'STRENGTH',
     "title" TEXT,
     "status" TEXT NOT NULL DEFAULT 'PLANNED',
@@ -107,18 +115,18 @@ CREATE TABLE "Session" (
     "hrResting" INTEGER,
     "hrPeak" INTEGER,
     "hrRecovery" TEXT,
-    "bodyweight" REAL,
-    "sessionRpe" REAL,
+    "bodyweight" DOUBLE PRECISION,
+    "sessionRpe" DOUBLE PRECISION,
     "notes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "Session_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "Session_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "SessionTemplate" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "SessionItem" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
     "blockId" TEXT NOT NULL,
@@ -134,29 +142,29 @@ CREATE TABLE "SessionItem" (
     "target" TEXT,
     "performedRaw" TEXT,
     "notes" TEXT,
-    CONSTRAINT "SessionItem_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "SessionItem_blockId_fkey" FOREIGN KEY ("blockId") REFERENCES "Block" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "SessionItem_exerciseId_fkey" FOREIGN KEY ("exerciseId") REFERENCES "Exercise" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+
+    CONSTRAINT "SessionItem_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "PerformedSet" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "sessionItemId" TEXT NOT NULL,
     "setNumber" INTEGER NOT NULL,
-    "load" REAL,
+    "load" DOUBLE PRECISION,
     "loadRaw" TEXT,
     "loadUnit" TEXT DEFAULT 'lb',
     "reps" INTEGER,
     "repsRaw" TEXT,
-    "rpe" REAL,
+    "rpe" DOUBLE PRECISION,
     "notes" TEXT,
-    CONSTRAINT "PerformedSet_sessionItemId_fkey" FOREIGN KEY ("sessionItemId") REFERENCES "SessionItem" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+
+    CONSTRAINT "PerformedSet_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "AssessmentMetric" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "key" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "category" TEXT NOT NULL,
@@ -164,32 +172,35 @@ CREATE TABLE "AssessmentMetric" (
     "valueType" TEXT NOT NULL DEFAULT 'NUMBER',
     "defaultOrder" INTEGER NOT NULL,
     "higherIsBetter" BOOLEAN,
-    "description" TEXT
+    "description" TEXT,
+
+    CONSTRAINT "AssessmentMetric_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Assessment" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "clientId" TEXT NOT NULL,
-    "date" DATETIME NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
     "label" TEXT,
     "isInitial" BOOLEAN NOT NULL DEFAULT false,
     "notes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "Assessment_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Assessment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "AssessmentValue" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "assessmentId" TEXT NOT NULL,
     "metricId" TEXT NOT NULL,
     "rawValue" TEXT,
-    "numericValue" REAL,
-    "secondaryValue" REAL,
+    "numericValue" DOUBLE PRECISION,
+    "secondaryValue" DOUBLE PRECISION,
     "notes" TEXT,
-    CONSTRAINT "AssessmentValue_assessmentId_fkey" FOREIGN KEY ("assessmentId") REFERENCES "Assessment" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "AssessmentValue_metricId_fkey" FOREIGN KEY ("metricId") REFERENCES "AssessmentMetric" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+
+    CONSTRAINT "AssessmentValue_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -248,3 +259,48 @@ CREATE INDEX "Assessment_clientId_date_idx" ON "Assessment"("clientId", "date");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AssessmentValue_assessmentId_metricId_key" ON "AssessmentValue"("assessmentId", "metricId");
+
+-- AddForeignKey
+ALTER TABLE "Client" ADD CONSTRAINT "Client_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BlockAlias" ADD CONSTRAINT "BlockAlias_blockId_fkey" FOREIGN KEY ("blockId") REFERENCES "Block"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Exercise" ADD CONSTRAINT "Exercise_primaryBlockId_fkey" FOREIGN KEY ("primaryBlockId") REFERENCES "Block"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TemplateItem" ADD CONSTRAINT "TemplateItem_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "SessionTemplate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TemplateItem" ADD CONSTRAINT "TemplateItem_blockId_fkey" FOREIGN KEY ("blockId") REFERENCES "Block"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TemplateItem" ADD CONSTRAINT "TemplateItem_exerciseId_fkey" FOREIGN KEY ("exerciseId") REFERENCES "Exercise"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Session" ADD CONSTRAINT "Session_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Session" ADD CONSTRAINT "Session_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "SessionTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SessionItem" ADD CONSTRAINT "SessionItem_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SessionItem" ADD CONSTRAINT "SessionItem_blockId_fkey" FOREIGN KEY ("blockId") REFERENCES "Block"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SessionItem" ADD CONSTRAINT "SessionItem_exerciseId_fkey" FOREIGN KEY ("exerciseId") REFERENCES "Exercise"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PerformedSet" ADD CONSTRAINT "PerformedSet_sessionItemId_fkey" FOREIGN KEY ("sessionItemId") REFERENCES "SessionItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Assessment" ADD CONSTRAINT "Assessment_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssessmentValue" ADD CONSTRAINT "AssessmentValue_assessmentId_fkey" FOREIGN KEY ("assessmentId") REFERENCES "Assessment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssessmentValue" ADD CONSTRAINT "AssessmentValue_metricId_fkey" FOREIGN KEY ("metricId") REFERENCES "AssessmentMetric"("id") ON DELETE CASCADE ON UPDATE CASCADE;

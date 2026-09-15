@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/", label: "Clients" },
   { href: "/library", label: "Exercise Library" },
   { href: "/templates", label: "Templates" },
+  { href: "/import", label: "Import Tracker" },
 ];
 
 export function SidebarNav({ userName }: { userName: string }) {

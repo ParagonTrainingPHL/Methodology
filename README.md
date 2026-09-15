@@ -24,25 +24,40 @@ population, where the point is function and health markers.
 Blood pressure is categorised against the 2017 ACC/AHA thresholds to flag
 readings for review. It is a prompt to look, not a diagnosis.
 
-## Getting started
+## Deploying
+
+See **[DEPLOY.md](DEPLOY.md)** for click-by-click instructions that need no
+command line: connect the repository to Vercel, attach a Postgres database, set
+one secret, and deploy. Migrations and the block/assessment seed run
+automatically on every deploy, so a fresh database comes up ready to use.
+
+The first visitor to a new deployment is sent to `/setup` to create the coach
+account. That page closes permanently once any account exists.
+
+## Local development
 
 ```bash
 npm install
-cp .env.example .env        # then set SESSION_SECRET to a random string
-npx prisma migrate dev      # create the SQLite database
+cp .env.example .env        # point DATABASE_URL at your Postgres, set SESSION_SECRET
+npx prisma migrate deploy
 npm run db:seed             # block taxonomy + assessment battery
-npm run user:create -- you@example.com "Your Name"
 npm run dev
 ```
 
-`user:create` prints a generated password unless you pass one as a third
-argument. Run it again with the same email to reset that password.
+Then open http://localhost:3000 and create your account through `/setup`, or
+skip the browser with `npm run user:create -- you@example.com "Your Name"`,
+which prints a generated password unless you pass one as a third argument.
 
-### Importing an existing tracker workbook
+### Importing a tracker workbook
+
+Upload it at **Import Tracker** in the sidebar, or from a terminal:
 
 ```bash
 npm run import:xlsx -- path/to/tracker.xlsx --reset
 ```
+
+`--reset` clears existing clients first, which is what re-importing an updated
+copy of the same workbook means. Coach accounts are never touched.
 
 The importer reads the spreadsheet format these programmes were kept in, where
 the same information is recorded inconsistently as habits changed over time:
@@ -76,12 +91,14 @@ second set") that the number alone loses.
 | `npm run user:create -- <email> <name>` | Create or reset a coach account |
 | `node scripts/smoke.mjs <clientId> <email> <password>` | End-to-end check of the main flows |
 | `node scripts/auth-check.mjs <clientId> <email> <password>` | Verify the app is closed when signed out |
+| `scripts/verify-first-run.sh <file.xlsx>` | Rebuild an empty database and walk the whole first-run journey (destroys local data) |
 
 ## Stack
 
-Next.js 16 (App Router), TypeScript, Tailwind 4, Prisma 6 with SQLite,
-Recharts. SQLite has no enums, so status-like fields are strings constrained by
-union types in `src/lib/constants.ts` — the schema moves to Postgres unchanged.
+Next.js 16 (App Router), TypeScript, Tailwind 4, Prisma 6 with Postgres,
+Recharts. Status-like fields are strings constrained by union types in
+`src/lib/constants.ts` rather than database enums, so adding a block category
+or session status is a code change rather than a migration.
 
 ## Access
 
@@ -100,4 +117,5 @@ signs everyone out.
 - A client-facing view. Clients cannot yet see their own programme or log their
   own sessions. The `User`/`Client` link exists in the schema for this.
 - Saving a session's slot sequence as a reusable template from the UI.
-- Password reset by email; use `npm run user:create` to reset one directly.
+- Password reset by email, and a way to add a second coach account from the UI.
+  Both currently need `npm run user:create`.

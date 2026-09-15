@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma migrate deploy && tsx prisma/seed.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
@@ -13,7 +13,9 @@
     "db:reset": "prisma migrate reset --force",
     "import:xlsx": "tsx scripts/import-xlsx.ts",
     "test": "tsx --test src/**/*.test.ts",
-    "user:create": "tsx scripts/create-user.ts"
+    "user:create": "tsx scripts/create-user.ts",
+    "postinstall": "prisma generate",
+    "build:local": "next build"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

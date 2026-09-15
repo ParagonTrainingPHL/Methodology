@@ -1,10 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { login } from "@/app/actions/auth";
 
 export function LoginForm({ next }: { next: string | null }) {
   const [state, formAction, pending] = useActionState(login, null);
+
+  // React clears an uncontrolled form after its action runs; holding the email
+  // means a rejected password does not also wipe the address.
+  const [email, setEmail] = useState("");
 
   return (
     <form
@@ -23,6 +27,8 @@ export function LoginForm({ next }: { next: string | null }) {
           autoComplete="email"
           required
           autoFocus
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           className="w-full rounded border border-ink-600 bg-ink-850 px-2.5 py-2 text-sm text-ink-100 focus:border-accent focus:outline-none"
         />
       </label>

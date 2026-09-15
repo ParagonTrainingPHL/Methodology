@@ -8,7 +8,11 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/login") return NextResponse.next();
+  // /setup guards itself against the database: it is only reachable while no
+  // account exists, which the edge runtime cannot check.
+  if (pathname === "/login" || pathname === "/setup") {
+    return NextResponse.next();
+  }
 
   const session = await verifySessionToken(
     request.cookies.get(SESSION_COOKIE)?.value,
