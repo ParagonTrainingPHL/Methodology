@@ -25,27 +25,32 @@ is enough for a coaching practice of this size.
 3. Find **Methodology** in the repository list and click **Import**.
    - If it isn't listed, click **Adjust GitHub App Permissions** and grant
      Vercel access to the repository.
-4. **Do not click Deploy yet.** The app needs a database first. Leave this tab
-   open and go to Step 2.
+4. Leave **Application Preset** on **Next.js** — it is detected correctly. If
+   the dropdown opens by accident, close it without choosing anything.
+5. Click **Create Project**.
+
+The first deployment **will fail**, with
+`Environment variable not found: DATABASE_URL`. That is expected: the app has
+no database yet. Steps 2 and 3 fix it.
 
 ---
 
 ## Step 2 — Add the database
 
-The app stores your clients in a Postgres database. Vercel can create one for
-you.
+The app stores your clients in a Postgres database.
 
-1. In the same project screen, find the **Storage** tab (or go to the
-   **Storage** tab in your Vercel dashboard).
-2. Click **Create Database** → choose **Postgres** (listed as Neon) →
-   **Continue**.
+1. Click **Storage** in the left sidebar of your project.
+2. Click **Create Database** → choose **Postgres** → **Continue**.
 3. Give it any name, pick the region closest to you, and click **Create**.
-4. Make sure it is **connected to your Methodology project**. Vercel usually
-   does this automatically; if asked, choose the Methodology project and click
+4. When asked which project to connect it to, choose **methodology** and click
    **Connect**.
 
-This automatically creates the `DATABASE_URL` setting the app needs. You do not
-need to copy anything.
+This creates the `DATABASE_URL` setting the app needs. You do not need to copy
+anything.
+
+Vercel also offers a database under **Optional Integrations** while creating
+the project. That path does not reliably attach the variable, so use the
+**Storage** sidebar instead.
 
 ---
 
@@ -54,13 +59,17 @@ need to copy anything.
 This is the one value you set by hand. It's what keeps other people from
 forging a login.
 
-1. In your project, go to **Settings** → **Environment Variables**.
+1. Click **Environment Variables** in the left sidebar of your project.
 2. Add a new variable:
-   - **Name:** `SESSION_SECRET`
-   - **Value:** a long random string — mash the keyboard for 40+ characters, or
-     use https://generate-secret.vercel.app/32 to generate one
+   - **Key:** `SESSION_SECRET`
+   - **Value:** a long random string — use
+     https://generate-secret.vercel.app/32 to generate one
    - **Environments:** tick all of them (Production, Preview, Development)
 3. Click **Save**.
+
+While you are here, check that `DATABASE_URL` is also listed, added by Step 2.
+If the database created a differently named variable instead, say so before
+deploying rather than renaming it by hand.
 
 Keep this value private, and don't change it later — changing it signs everyone
 out.
@@ -69,10 +78,10 @@ out.
 
 ## Step 4 — Deploy
 
-1. Go to the **Deployments** tab and click **Deploy** (or **Redeploy** on the
-   most recent entry).
-2. Wait 2–3 minutes. You'll see build output scroll past; that's normal.
-3. When it finishes you'll get a web address like
+1. Click **Deployments** in the left sidebar.
+2. On the most recent entry, open the `⋯` menu and choose **Redeploy**.
+3. Wait 2–3 minutes. You'll see build output scroll past; that's normal.
+4. When it finishes you'll get a web address like
    `methodology-xxxx.vercel.app`. **That's your app.** Bookmark it.
 
 The database tables are created automatically during this deploy. There is
