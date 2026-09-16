@@ -4,30 +4,21 @@ This gets the app onto a real web address you can open from your phone at the
 gym or any computer. **No command line at any point.** Everything below happens
 in a web browser.
 
-Budget about 20 minutes the first time. After this, any change is redeployed
+Budget about 15 minutes the first time. After this, any change is redeployed
 automatically.
 
 You will need a free [Vercel](https://vercel.com) account. Vercel is the
 company that makes Next.js, which this app is built with, and their free tier
 is enough for a coaching practice of this size.
 
----
-
-## Step 1 — Merge the branch on GitHub
-
-The app currently lives on a branch. Put it on `main` so Vercel picks it up.
-
-1. Go to https://github.com/ParagonTrainingPHL/Methodology
-2. You'll see a yellow banner about the `claude/workout-programming-app-hrjn50`
-   branch. Click **Compare & pull request**.
-   - No banner? Click **Pull requests** → **New pull request**, set "compare"
-     to `claude/workout-programming-app-hrjn50`, click **Create pull request**.
-3. Click **Create pull request**, then **Merge pull request**, then
-   **Confirm merge**.
+> **Nothing to do on GitHub first.** The repository has a single branch,
+> `claude/workout-programming-app-hrjn50`, and it is already the default. The
+> whole app is on it, so Vercel picks it up on its own. There is no `main`
+> branch to merge into and no pull request to open — start at Step 1 below.
 
 ---
 
-## Step 2 — Create the Vercel project
+## Step 1 — Create the Vercel project
 
 1. Go to https://vercel.com/signup and choose **Continue with GitHub**.
 2. Once signed in, click **Add New…** → **Project**.
@@ -35,11 +26,11 @@ The app currently lives on a branch. Put it on `main` so Vercel picks it up.
    - If it isn't listed, click **Adjust GitHub App Permissions** and grant
      Vercel access to the repository.
 4. **Do not click Deploy yet.** The app needs a database first. Leave this tab
-   open and go to Step 3.
+   open and go to Step 2.
 
 ---
 
-## Step 3 — Add the database
+## Step 2 — Add the database
 
 The app stores your clients in a Postgres database. Vercel can create one for
 you.
@@ -58,7 +49,7 @@ need to copy anything.
 
 ---
 
-## Step 4 — Add your secret key
+## Step 3 — Add your secret key
 
 This is the one value you set by hand. It's what keeps other people from
 forging a login.
@@ -76,7 +67,7 @@ out.
 
 ---
 
-## Step 5 — Deploy
+## Step 4 — Deploy
 
 1. Go to the **Deployments** tab and click **Deploy** (or **Redeploy** on the
    most recent entry).
@@ -89,7 +80,7 @@ nothing else to run.
 
 ---
 
-## Step 6 — Create your account
+## Step 5 — Create your account
 
 1. Open your new web address.
 2. It will show **Welcome to Methodology** and ask you to create an account.
@@ -101,7 +92,7 @@ closes permanently, so nobody else can claim the app.
 
 ---
 
-## Step 7 — Upload your tracker
+## Step 6 — Upload your tracker
 
 1. Click **Import Tracker** in the left sidebar.
 2. Click **Choose File** and select your
@@ -133,11 +124,11 @@ I can reset it for you directly.
 ## If something goes wrong
 
 **The deploy failed.** Open the failed deployment and read the last few red
-lines. The usual cause is the database not being connected — recheck Step 3,
+lines. The usual cause is the database not being connected — recheck Step 2,
 then redeploy.
 
 **"Something went wrong" when you open the app.** `SESSION_SECRET` is probably
-missing or only set for some environments. Recheck Step 4, ticking every
+missing or only set for some environments. Recheck Step 3, ticking every
 environment, then redeploy.
 
 **The welcome screen never appears and it asks you to sign in instead.** An
