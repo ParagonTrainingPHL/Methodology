@@ -13,6 +13,10 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Migrations need a direct connection. Hosted Postgres hands the app a
+  // pooled URL, and running schema changes through a pooler can hang or apply
+  // partially. Neon supplies both; locally the two point at the same server.
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model User {

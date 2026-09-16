@@ -67,9 +67,10 @@ forging a login.
    - **Environments:** tick all of them (Production, Preview, Development)
 3. Click **Save**.
 
-While you are here, check that `DATABASE_URL` is also listed, added by Step 2.
-If the database created a differently named variable instead, say so before
-deploying rather than renaming it by hand.
+While you are here, you should also see around 18 variables added by Neon in
+Step 2, including `DATABASE_URL` and `DATABASE_URL_UNPOOLED`. The app uses
+both — the first for normal queries, the second for migrations. Leave them
+alone; they are managed by the database.
 
 Keep this value private, and don't change it later — changing it signs everyone
 out.
